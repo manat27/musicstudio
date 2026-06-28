@@ -18,9 +18,13 @@ if sys.platform == "win32":
 from api.routes import router as cover_router
 from api.suno_routes import router as suno_router
 from core.job_manager import job_manager
+from version import get_version
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
+
+# ดึงเวอร์ชันปัจจุบัน
+CURRENT_VERSION = get_version()
 
 for d in ["uploads", "outputs", "outputs/tasks"]:
     Path(d).mkdir(parents=True, exist_ok=True)
@@ -34,7 +38,7 @@ async def lifespan(app: FastAPI):
     await job_manager.stop()
 
 
-app = FastAPI(title="AI Cover Studio API", version="2.0.0", lifespan=lifespan)
+app = FastAPI(title="AI Cover Studio API", version=CURRENT_VERSION, lifespan=lifespan)
 
 app.add_middleware(CORSMiddleware, allow_origins=["*"],
                    allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
@@ -51,7 +55,30 @@ if frontend_path.exists():
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "service": "AI Cover Studio", "version": "2.0"}
+    return {"status": "ok", "service": "AI Cover Studio", "version": CURRENT_VERSION}
+
+
+@app.get("/api/version")
+async def get_version_info():
+    """ข้อมูลเวอร์ชันปัจจุบัน"""
+    from version import get_version, save_version
+    current = get_version()
+    return {
+        "version": current,
+        "service": "AI Cover Studio",
+        "build_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+
+
+@app.post("/api/version/bump")
+async def bump_version(part: str = "patch"):
+    """เพิ่มเวอร์ชันอัตโนมัติ (major, minor, patch)"""
+    from version import bump_version as bv
+    try:
+        new_ver = bv(part)
+        return {"success": True, "new_version": new_ver, "message": f"Version bumped to {new_ver}"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 
 if __name__ == "__main__":
