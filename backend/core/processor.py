@@ -59,14 +59,14 @@ async def process_cover_job(job: Job):
         job.update(JobStatus.SEPARATING, 32, "✓ แยกเสียงสำเร็จ")
 
         # ═══════════════════════════════════════════════════════════
-        # Stage 1.5 — Analyze (optional, for suno mode)
+        # Stage 1.5 — Analyze: ดึงเนื้อร้องและสไตล์ (สำหรับ remix/cover)
         # ═══════════════════════════════════════════════════════════
-        if mode == "suno" and job.style_prompt:
-            job.update(JobStatus.SEPARATING, 35, "🔍 วิเคราะห์สไตล์เพลง...")
-            analysis = await analyze_audio(vocal_path)
-            job.lyrics = analysis.get("lyrics", "")
-            job.music_caption = analysis.get("caption", "")
-            job_manager.save_job(job)
+        job.update(JobStatus.SEPARATING, 35, "🔍 วิเคราะห์เนื้อร้องและสไตล์...")
+        analysis = await analyze_audio(vocal_path)
+        job.lyrics = analysis.get("lyrics", "")
+        job.music_caption = analysis.get("caption", "")
+        job_manager.save_job(job)
+        logger.info(f"[Job {job.id[:8]}] Lyrics detected: {len(job.lyrics)} chars")
 
         # ═══════════════════════════════════════════════════════════
         # Stage 2 — Parallel: Voice Convert + Instrumental Enhance
@@ -85,6 +85,7 @@ async def process_cover_job(job: Job):
                 voice_model=job.voice_model,
                 pitch_shift=job.pitch,
                 style_prompt=job.style_prompt,
+                lyrics=job.lyrics,  # ใช้เนื้อร้องที่ดึงมา
             )
             # Copy instrumental without enhancement
             async def _copy_inst():
@@ -101,6 +102,7 @@ async def process_cover_job(job: Job):
                 voice_model="suno_mode",
                 pitch_shift=job.pitch,
                 style_prompt=job.style_prompt,
+                lyrics=job.lyrics,  # ใช้เนื้อร้องที่ดึงมา
             )
             enhance_task = enhance_instrumental(
                 instrumental_path=instrumental_path,
@@ -122,6 +124,7 @@ async def process_cover_job(job: Job):
                 voice_model=job.voice_model,
                 pitch_shift=job.pitch,
                 style_prompt=job.style_prompt,
+                lyrics=job.lyrics,  # ใช้เนื้อร้องที่ดึงมา
             )
             enhance_task = enhance_instrumental(
                 instrumental_path=instrumental_path,

@@ -41,6 +41,7 @@ async def convert_voice(
     voice_model: str = "male_thai",
     pitch_shift: int = 0,
     style_prompt: str = "",
+    lyrics: str = "",  # เนื้อร้องที่ดึงมาจาก analyze_audio
 ) -> Path:
     if not voice_model:
         voice_model = "male_thai"
@@ -66,7 +67,7 @@ async def convert_voice(
 
     try:
         result = await _convert_via_ace_step(
-            vocal_path, output_path, active_preset, pitch_shift, is_suno
+            vocal_path, output_path, active_preset, pitch_shift, is_suno, lyrics
         )
         if result:
             return result
@@ -82,6 +83,7 @@ async def _convert_via_ace_step(
     preset: dict,
     pitch_shift: int,
     is_suno: bool = False,
+    lyrics: str = "",  # เนื้อร้องที่ดึงมาจาก analyze_audio
 ) -> Path | None:
     async with httpx.AsyncClient(timeout=180.0) as client:
 
@@ -111,7 +113,7 @@ async def _convert_via_ace_step(
         payload = {
             "audio_duration": -1,
             "prompt": tags,
-            "lyrics": "",
+            "lyrics": lyrics,  # ใช้เนื้อร้องที่ดึงมา (หรือส่งเข้ามา)
             "infer_step": 20 if is_suno else 8,
             "guidance_scale": 5.0 if is_suno else 3.5,
             "scheduler_type": "euler",
