@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Cover Studio</title>
+<style>
+:root {
+  --bg:#0a0a0f; --bg2:#111118; --bg3:#1a1a24; --bg4:#22222e;
+  --border:#252532; --border2:#32324a;
+  --text:#e2e2f0; --text2:#8888aa; --text3:#444466;
+  --accent:#7c6bff; --accent2:#a395ff; --accent-bg:rgba(124,107,255,.1); --accent-border:rgba(124,107,255,.25);
+  --green:#20d468; --green-bg:rgba(32,212,104,.08);
+  --red:#ff4d6a; --red-bg:rgba(255,77,106,.08);
+  --amber:#ffb730; --amber-bg:rgba(255,183,48,.08);
+  --pink:#ff6eb0; --pink-bg:rgba(255,110,176,.08);
+  --r:12px; --r2:8px;
+  --shadow:0 2px 20px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;height:100vh;overflow:hidden}
+
+/* ── Top bar ── */
+.topbar{height:50px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 18px;gap:12px;position:relative;z-index:10}
+.logo{width:28px;height:28px;background:linear-gradient(135deg,var(--accent),var(--pink));border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 10px rgba(124,107,255,.4)}
+.topbar h1{font-size:14px;font-weight:600;letter-spacing:-.2px}
+.pill{font-size:10px;padding:2px 8px;border-radius:99px;border:1px solid var(--border2);color:var(--text3);background:var(--bg3)}
+.pill.warn{color:var(--amber);border-color:rgba(255,183,48,.3)}
+.queue-pill{color:var(--accent2);border-color:var(--accent-border);background:var(--accent-bg)}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.ace-badge{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--text3);transition:background .3s}
+.dot.on{background:var(--green);box-shadow:0 0 6px var(--green)}
+.dot.off{background:var(--red)}
+
+/* ── Tabs ── */
+.tabs{height:38px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;padding:0 18px;gap:2px}
+.tab{padding:0 16px;height:38px;border:none;background:none;color:var(--text3);font-size:12px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;display:flex;align-items:center;gap:6px}
+.tab:hover{color:var(--text2)}
+.tab.active{color:var(--accent2);border-bottom-color:var(--accent)}
+.tab-icon{font-size:14px}
+
+/* ── Pages ── */
+.pages{height:calc(100vh - 88px);position:relative}
+.page{position:absolute;inset:0;display:none;overflow:hidden}
+.page.active{display:flex}
+
+/* ════════════════════════════════
+   STUDIO PAGE — 3 column
+════════════════════════════════ */
+#page-studio{grid-template-columns:300px 1fr 260px;display:none}
+#page-studio.active{display:grid}
+.s-left,.s-right{overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:11px}
+.s-left{background:var(--bg2);border-right:1px solid var(--border)}
+.s-right{background:var(--bg2);border-left:1px solid var(--border)}
+.s-center{overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:14px;background:var(--bg)}
+
+/* ════════════════════════════════
+   CREATE PAGE — Suno-style 2 col
+════════════════════════════════ */
+#page-create{display:none}
+#page-create.active{display:grid;grid-template-columns:380px 1fr}
+.c-left{overflow-y:auto;padding:18px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;gap:14px}
+.c-right{overflow-y:auto;padding:18px;background:var(--bg);display:flex;flex-direction:column;gap:12px}
+
+/* ════════════════════════════════
+   EDIT PAGE
+════════════════════════════════ */
+#page-edit{display:none}
+#page-edit.active{display:grid;grid-template-columns:380px 1fr}
+.e-left{overflow-y:auto;padding:18px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;gap:14px}
+.e-right{overflow-y:auto;padding:18px;background:var(--bg);display:flex;flex-direction:column;gap:12px}
+
+/* ════════════════════════════════
+   LIBRARY / HISTORY PAGE
+════════════════════════════════ */
+#page-library{display:none}
+#page-library.active{display:block;overflow-y:auto}
+.lib-inner{padding:20px;max-width:1100px;margin:0 auto}
+
+/* ── Common UI atoms ── */
+.sec{margin-bottom:4px}
+.sec-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:7px}
+.divider{height:1px;background:var(--border);flex-shrink:0}
+
+/* Drop zone */
+.dz{border:1.5px dashed var(--border2);border-radius:var(--r);padding:20px 14px;text-align:center;cursor:pointer;transition:all .2s;position:relative}
+.dz:hover,.dz.drag{border-color:var(--accent);background:var(--accent-bg)}
+.dz.ok{border-style:solid;border-color:var(--accent);background:var(--accent-bg)}
+.dz input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.dz-icon{font-size:22px;margin-bottom:5px}
+.dz-sub{font-size:10px;color:var(--text3);margin-top:3px}
+.dz-name{font-size:12px;font-weight:500;color:var(--accent2)}
+
+/* Voice grid */
+.voice-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.vbtn{padding:8px 9px;border:1px solid var(--border);border-radius:var(--r2);background:var(--bg3);cursor:pointer;display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2);transition:all .1s;white-space:nowrap;overflow:hidden}
+.vbtn:hover{border-color:var(--border2);color:var(--text)}
+.vbtn.active{border-color:var(--accent);background:var(--accent-bg);color:var(--accent2)}
+
+/* Pitch buttons */
+.pitch-row{display:flex;gap:4px}
+.pbtn{flex:1;height:28px;border:1px solid var(--border);border-radius:6px;background:var(--bg3);cursor:pointer;font-size:11px;font-weight:600;color:var(--text2);transition:all .1s}
+.pbtn:hover{color:var(--text);border-color:var(--border2)}
+.pbtn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* Sliders */
+.sl-row{display:grid;grid-template-columns:64px 1fr 30px;align-items:center;gap:8px;margin-bottom:6px}
+.sl-label{font-size:11px;color:var(--text2)}
+input[type=range]{-webkit-appearance:none;height:3px;border-radius:99px;background:var(--border2);outline:none;cursor:pointer;width:100%}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--accent);box-shadow:0 0 5px rgba(124,107,255,.5)}
+.sl-val{font-size:10px;color:var(--text3);text-align:right}
+
+/* Textarea */
+.ta{width:100%;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:12px;outline:none;resize:vertical;line-height:1.6;font-family:inherit}
+.ta:focus{border-color:var(--accent)}
+.ta::placeholder{color:var(--text3)}
+.inp{width:100%;padding:8px 11px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:12px;outline:none;font-family:inherit}
+.inp:focus{border-color:var(--accent)}
+.inp::placeholder{color:var(--text3)}
+
+/* Buttons */
+.btn-primary{width:100%;padding:11px;background:linear-gradient(135deg,var(--accent),var(--pink));color:#fff;border:none;border-radius:var(--r2);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s;box-shadow:0 2px 12px rgba(124,107,255,.3)}
+.btn-primary:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 4px 20px rgba(124,107,255,.5)}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.btn-secondary{padding:8px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text2);font-size:12px;cursor:pointer;transition:all .1s}
+.btn-secondary:hover{border-color:var(--border2);color:var(--text)}
+.btn-sm{padding:5px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text2);font-size:11px;cursor:pointer;transition:all .1s}
+.btn-sm:hover{border-color:var(--border2);color:var(--text)}
+.btn-sm.danger:hover{border-color:var(--red);color:var(--red)}
+
+/* Status */
+.status-msg{font-size:11px;color:var(--text3);text-align:center;min-height:16px;margin-top:5px}
+.status-msg.ok{color:var(--green)}
+.status-msg.err{color:var(--red)}
+
+/* Progress */
+.prog-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:14px}
+.prog-track{background:var(--border);border-radius:99px;height:4px;margin:8px 0;overflow:hidden}
+.prog-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent),var(--pink));transition:width .4s ease}
+.prog-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--text2)}
+.stages{margin-top:10px;display:flex;flex-direction:column;gap:5px}
+.st{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text3)}
+.st.done{color:var(--green)}
+.st.active{color:var(--text)}
+.st-dot{width:5px;height:5px;border-radius:50%;background:var(--border2);flex-shrink:0}
+.st.done .st-dot{background:var(--green)}
+.st.active .st-dot{background:var(--accent);box-shadow:0 0 6px var(--accent)}
+
+/* Log */
+.log-box{background:var(--bg);border:1px solid var(--border);border-radius:var(--r2);padding:10px;font-family:'Consolas','Courier New',monospace;font-size:11px;height:100px;overflow-y:auto;line-height:1.7;color:var(--text2)}
+
+/* Result card */
+.result-card{background:var(--bg3);border:1px solid var(--accent-border);border-radius:var(--r);padding:14px}
+.result-hdr{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:13px;font-weight:500}
+.badge{font-size:9px;padding:2px 7px;border-radius:99px}
+.badge-done{background:var(--green-bg);color:var(--green);border:1px solid rgba(32,212,104,.3)}
+.badge-err{background:var(--red-bg);color:var(--red);border:1px solid rgba(255,77,106,.3)}
+.player{background:var(--bg2);border-radius:var(--r2);padding:10px 12px;display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.play-btn{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--pink));border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;box-shadow:0 2px 8px rgba(124,107,255,.4)}
+.waveform{flex:1;height:30px;display:flex;align-items:center;gap:1px;cursor:pointer}
+.wb{flex:1;border-radius:2px;background:var(--border2);min-width:2px;transition:background .05s}
+.wb.played{background:var(--accent)}
+.time-d{font-size:10px;color:var(--text3);width:32px;text-align:right}
+.dl-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.dl-btn{padding:7px 9px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);color:var(--text2);font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .1s;text-decoration:none}
+.dl-btn:hover{border-color:var(--accent);color:var(--accent2)}
+
+/* Idle state */
+.idle{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text3);gap:10px;text-align:center}
+.idle .big{font-size:48px}
+.idle h3{font-size:15px;color:var(--text2);font-weight:500}
+.idle p{font-size:12px;line-height:1.7;max-width:300px}
+
+/* ── Suno task cards ── */
+.task-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:14px;transition:border-color .2s}
+.task-card:hover{border-color:var(--border2)}
+.task-hdr{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.task-icon{font-size:18px}
+.task-title{font-size:13px;font-weight:600}
+.task-desc{font-size:11px;color:var(--text3);margin-top:1px}
+.task-mini-prog{height:2px;background:var(--border);border-radius:99px;overflow:hidden;margin:6px 0}
+.task-mini-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--pink));border-radius:99px;transition:width .4s}
+
+/* Repaint timeline */
+.timeline{position:relative;height:44px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);margin:8px 0;cursor:pointer;overflow:hidden;user-select:none}
+.tl-bg{position:absolute;inset:0;display:flex;align-items:center;padding:0 8px;gap:1px}
+.tl-bar{flex:1;height:18px;border-radius:2px;background:var(--border2)}
+.tl-selection{position:absolute;top:0;bottom:0;background:rgba(124,107,255,.25);border:1px solid var(--accent);border-radius:4px;pointer-events:none}
+.tl-label{position:absolute;bottom:3px;font-size:9px;color:var(--accent2)}
+
+/* Mode toggle */
+.mode-row{display:flex;gap:6px}
+.mode-btn{flex:1;padding:7px;border:1px solid var(--border);border-radius:var(--r2);background:var(--bg3);cursor:pointer;font-size:11px;color:var(--text2);transition:all .1s;text-align:center}
+.mode-btn:hover{border-color:var(--border2);color:var(--text)}
+.mode-btn.active{border-color:var(--accent);background:var(--accent-bg);color:var(--accent2)}
+
+/* Library table */
+.lib-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.lib-toolbar h2{font-size:15px;font-weight:600}
+.lib-search{flex:1;padding:7px 11px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-size:12px;outline:none}
+.lib-search:focus{border-color:var(--accent)}
+.lib-search::placeholder{color:var(--text3)}
+.lib-table{width:100%;border-collapse:collapse}
+.lib-table th{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border);font-weight:500}
+.lib-table td{padding:9px 10px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text2);vertical-align:middle}
+.lib-table tr:hover td{background:var(--bg3)}
+.chip{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:500}
+.chip-done{background:var(--green-bg);color:var(--green)}
+.chip-err{background:var(--red-bg);color:var(--red)}
+.chip-run{background:var(--accent-bg);color:var(--accent2)}
+.chip-q{background:var(--bg4);color:var(--text3)}
+.chip-t2m{background:var(--pink-bg);color:var(--pink)}
+.chip-a2a{background:var(--accent-bg);color:var(--accent2)}
+.chip-edit{background:var(--amber-bg);color:var(--amber)}
+.act-btn{padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--text3);font-size:10px;cursor:pointer;transition:all .1s;margin-left:3px}
+.act-btn:hover{border-color:var(--accent);color:var(--accent2)}
+.act-btn.del:hover{border-color:var(--red);color:var(--red)}
+
+/* Side history */
+.hist-item{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:8px 10px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:border-color .1s;margin-bottom:4px}
+.hist-item:hover{border-color:var(--border2)}
+.hi-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.hi-info{flex:1;min-width:0}
+.hi-name{font-size:11px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hi-sub{font-size:10px;color:var(--text3);margin-top:1px}
+
+/* Guidance label */
+.guidance-label{display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-top:2px}
+
+/* System panel */
+.be-row{display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:3px 0}
+.be-l{color:var(--text3)}
+.be-v{color:var(--green)}
+.be-v.off{color:var(--red)}
+.be-v.warn{color:var(--amber)}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
+
+/* Seed row */
+.seed-row{display:grid;grid-template-columns:1fr 36px;gap:6px;align-items:center}
+</style>
+</head>
+<body>
+
+<!-- Top Bar -->
+<div class="topbar">
+  <div class="logo">🎵</div>
+  <h1>AI Cover Studio</h1>
+  <span class="pill">Phase 2</span>
+  <span class="pill queue-pill" id="queue-pill">Queue: 0</span>
+  <div class="topbar-right">
+    <div class="ace-badge"><div class="dot" id="ace-dot"></div><span id="ace-lbl">ตรวจสอบ...</span></div>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab active" onclick="showTab('studio',this)"><span class="tab-icon">🎙️</span>Cover Studio</button>
+  <button class="tab" onclick="showTab('create',this)"><span class="tab-icon">✨</span>สร้างเพลงใหม่</button>
+  <button class="tab" onclick="showTab('edit',this)"><span class="tab-icon">🎛️</span>Edit / Remix</button>
+  <button class="tab" onclick="showTab('library',this);loadLibrary()"><span class="tab-icon">📚</span>Library</button>
+</div>
+
+<div class="pages">
+
+<!-- ═══════════════════════════════════════════
+     STUDIO — Cover / Voice Change
+═══════════════════════════════════════════ -->
+<div id="page-studio" class="page active">
+  <div class="s-left">
+
+    <div>
+      <div class="sec-label">📂 เพลงต้นฉบับ</div>
+      <div class="dz" id="dz">
+        <input type="file" id="fi" accept=".mp3,.wav,.flac,.m4a">
+        <div class="dz-icon" id="dz-icon">🎵</div>
+        <div style="font-size:12px;color:var(--text2)" id="dz-title">ลากไฟล์มาวาง หรือคลิกเพื่อเลือก</div>
+        <div class="dz-sub" id="dz-sub">MP3 · WAV · FLAC · M4A (สูงสุด 100MB)</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="sec-label">🎤 เสียงนักร้อง</div>
+      <div class="voice-grid" id="voice-grid-studio"></div>
+      <input class="inp" id="custom-voice" type="text" placeholder="หรือใส่ชื่อโมเดลเสียงเอง..." style="margin-top:6px">
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="sec-label">🎛️ ปรับแต่ง</div>
+      <div style="margin-bottom:8px">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:5px">Pitch Shift</div>
+        <div class="pitch-row" id="pitch-row"></div>
+      </div>
+      <div class="sl-row">
+        <span class="sl-label">Reverb</span>
+        <input type="range" min="0" max="100" value="20" id="reverb-sl" oninput="document.getElementById('reverb-v').textContent=this.value">
+        <span class="sl-val" id="reverb-v">20</span>
+      </div>
+      <div class="sl-row">
+        <span class="sl-label">Vocal mix</span>
+        <input type="range" min="0" max="100" value="80" id="mix-sl" oninput="document.getElementById('mix-v').textContent=this.value">
+        <span class="sl-val" id="mix-v">80</span>
+      </div>
+      <div class="sl-row">
+        <span class="sl-label">Ref strength</span>
+        <input type="range" min="50" max="99" value="85" id="ref-sl" oninput="document.getElementById('ref-v').textContent=(this.value/100).toFixed(2)">
+        <span class="sl-val" id="ref-v">0.85</span>
+      </div>
+      <div class="guidance-label"><span>เปลี่ยนมาก</span><span>เปลี่ยนน้อย</span></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <button class="btn-primary" id="gen-btn" onclick="generateCover()">🎙️ Generate Cover</button>
+    <div class="status-msg" id="status-msg"></div>
+
+  </div>
+
+  <div class="s-center">
+    <div class="idle" id="s-idle">
+      <div class="big">🎙️</div>
+      <h3>AI Cover Studio</h3>
+      <p>เลือกเพลงต้นฉบับ เลือกเสียงนักร้อง กด Generate<br>ระบบจะแยกเสียง → เปลี่ยนเสียง → Auto Mix ให้อัตโนมัติ</p>
+      <div style="display:flex;gap:14px;font-size:11px;margin-top:6px">
+        <span>🔵 Demucs</span><span>🟣 ACE-Step</span><span>🟢 FFmpeg Mix</span>
+      </div>
+    </div>
+
+    <div id="s-prog" style="display:none">
+      <div style="font-size:14px;font-weight:600;margin-bottom:12px">⚙️ กำลังประมวลผล</div>
+      <div class="prog-card">
+        <div class="prog-meta"><span id="prog-lbl">เตรียมพร้อม...</span><span id="prog-pct">0%</span></div>
+        <div class="prog-track"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+        <div class="stages">
+          <div class="st" id="st1"><div class="st-dot"></div>แยกเสียง (Demucs htdemucs_ft)</div>
+          <div class="st" id="st2"><div class="st-dot"></div>แปลงเสียง (ACE-Step audio2audio)</div>
+          <div class="st" id="st3"><div class="st-dot"></div>Auto Mix + EQ + Mastering</div>
+          <div class="st" id="st4"><div class="st-dot"></div>Export MP3 + WAV + Stems</div>
+        </div>
+      </div>
+      <div style="margin-top:12px">
+        <div class="sec-label">Log</div>
+        <div class="log-box" id="s-log"></div>
+      </div>
+    </div>
+
+    <div id="s-result" style="display:none">
+      <div class="result-card">
+        <div class="result-hdr">🎵 Cover พร้อมแล้ว <span class="badge badge-done">✓ Done</span></div>
+        <div class="player">
+          <button class="play-btn" id="play-btn" onclick="togglePlay()">▶</button>
+          <div class="waveform" id="waveform" onclick="seekWave(event)"></div>
+          <span class="time-d" id="time-d">0:00</span>
+        </div>
+        <div class="dl-grid">
+          <a class="dl-btn" id="dl-mp3" href="#" download>⬇ cover.mp3</a>
+          <a class="dl-btn" id="dl-wav" href="#" download>⬇ cover.wav</a>
+          <a class="dl-btn" id="dl-vocal" href="#" download>⬇ vocal.wav</a>
+          <a class="dl-btn" id="dl-inst" href="#" download>⬇ instrumental.wav</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="s-right">
+    <div>
+      <div class="sec-label">🕘 งานล่าสุด</div>
+      <div id="side-hist"></div>
+    </div>
+    <div class="divider"></div>
+    <div>
+      <div class="sec-label">⚙️ System</div>
+      <div class="be-row"><span class="be-l">FastAPI</span><span class="be-v" id="be-api">–</span></div>
+      <div class="be-row"><span class="be-l">ACE-Step</span><span class="be-v off" id="be-ace">–</span></div>
+      <div class="be-row"><span class="be-l">Demucs</span><span class="be-v">htdemucs_ft</span></div>
+      <div class="be-row"><span class="be-l">Queue</span><span class="be-v" id="be-q">0</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     CREATE — text2music (Suno-style)
+═══════════════════════════════════════════ -->
+<div id="page-create" class="page">
+  <div class="c-left">
+    <div>
+      <div style="font-size:16px;font-weight:700;margin-bottom:4px">✨ สร้างเพลงใหม่</div>
+      <div style="font-size:12px;color:var(--text3)">สร้างเพลงจาก prompt และเนื้อร้อง เหมือน Suno AI</div>
+    </div>
+
+    <div>
+      <div class="sec-label">🎨 Style Prompt</div>
+      <textarea class="ta" id="c-prompt" rows="3" placeholder="เช่น: thai pop, female vocal, emotional, piano, slow tempo, professional quality&#10;&#10;เคล็ดลับ: ใส่ genre, เครื่องดนตรี, อารมณ์, ความเร็ว"></textarea>
+    </div>
+
+    <div>
+      <div class="sec-label">📝 เนื้อร้อง (ไม่บังคับ)</div>
+      <textarea class="ta" id="c-lyrics" rows="6" placeholder="[verse]&#10;เนื้อร้องของคุณ...&#10;&#10;[chorus]&#10;...&#10;&#10;ใช้ [verse], [chorus], [bridge] เพื่อแบ่งท่อน"></textarea>
+    </div>
+
+    <div>
+      <div class="sec-label">⏱️ ความยาว (วินาที)</div>
+      <div class="sl-row">
+        <span class="sl-label">Duration</span>
+        <input type="range" min="15" max="240" value="60" id="c-dur" oninput="document.getElementById('c-dur-v').textContent=this.value+'s'">
+        <span class="sl-val" id="c-dur-v">60s</span>
+      </div>
+    </div>
+
+    <div>
+      <div class="sec-label">🔬 Advanced</div>
+      <div class="sl-row">
+        <span class="sl-label">Steps</span>
+        <input type="range" min="8" max="100" value="60" id="c-steps" oninput="document.getElementById('c-steps-v').textContent=this.value">
+        <span class="sl-val" id="c-steps-v">60</span>
+      </div>
+      <div class="sl-row">
+        <span class="sl-label">Guidance</span>
+        <input type="range" min="3" max="25" value="15" step="0.5" id="c-cfg" oninput="document.getElementById('c-cfg-v').textContent=parseFloat(this.value).toFixed(1)">
+        <span class="sl-val" id="c-cfg-v">15.0</span>
+      </div>
+      <div class="guidance-label"><span>creative</span><span>strict</span></div>
+      <div class="seed-row" style="margin-top:8px">
+        <input class="inp" id="c-seed" type="number" value="-1" placeholder="Seed (-1 = random)">
+        <button class="btn-sm" onclick="document.getElementById('c-seed').value=Math.floor(Math.random()*99999)" title="Random seed">🎲</button>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="c-btn" onclick="createSong()">✨ Create Song</button>
+    <div class="status-msg" id="c-status"></div>
+  </div>
+
+  <div class="c-right">
+    <div class="idle" id="c-idle">
+      <div class="big">✨</div>
+      <h3>สร้างเพลงใหม่ด้วย ACE-Step</h3>
+      <p>ใส่ style prompt และเนื้อร้อง ACE-Step จะสร้างเพลงที่มีทั้ง vocal และ BGM ครบ</p>
+      <div style="margin-top:12px;display:flex;flex-direction:column;gap:6px;text-align:left;width:100%;max-width:300px">
+        <div style="font-size:11px;color:var(--text3)">💡 ตัวอย่าง prompts:</div>
+        <div class="task-card" style="cursor:pointer" onclick="fillPrompt('thai pop, clear female vocal, emotional ballad, piano, strings, slow tempo')">
+          <div style="font-size:11px;color:var(--text2)">🎹 Thai Pop Ballad</div>
+          <div style="font-size:10px;color:var(--text3)">thai pop, clear female vocal, emotional, piano</div>
+        </div>
+        <div class="task-card" style="cursor:pointer" onclick="fillPrompt('luktung, thai country music, male vocal, acoustic guitar, emotional, folk')">
+          <div style="font-size:11px;color:var(--text2)">🎸 ลูกทุ่ง</div>
+          <div style="font-size:10px;color:var(--text3)">luktung, thai country, male vocal, acoustic guitar</div>
+        </div>
+        <div class="task-card" style="cursor:pointer" onclick="fillPrompt('thai rock, powerful male vocal, electric guitar, drums, energetic, anthem')">
+          <div style="font-size:11px;color:var(--text2)">🎸 Rock</div>
+          <div style="font-size:10px;color:var(--text3)">thai rock, powerful vocal, electric guitar, drums</div>
+        </div>
+        <div class="task-card" style="cursor:pointer" onclick="fillPrompt('thai morlam, lao style, ethnic instruments, accordion, upbeat, festive')">
+          <div style="font-size:11px;color:var(--text2)">🥁 หมอลำ</div>
+          <div style="font-size:10px;color:var(--text3)">morlam, lao style, ethnic, accordion, upbeat</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="c-tasks"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     EDIT — Retake / Repaint / Style Edit
+═══════════════════════════════════════════ -->
+<div id="page-edit" class="page">
+  <div class="e-left">
+    <div>
+      <div style="font-size:16px;font-weight:700;margin-bottom:4px">🎛️ Edit & Remix</div>
+      <div style="font-size:12px;color:var(--text3)">แก้ไขเพลง เปลี่ยน style หรือสร้าง variation ใหม่</div>
+    </div>
+
+    <div>
+      <div class="sec-label">📂 เพลงต้นฉบับ</div>
+      <div class="dz" id="e-dz">
+        <input type="file" id="e-fi" accept=".mp3,.wav,.flac,.m4a">
+        <div class="dz-icon">✏️</div>
+        <div style="font-size:12px;color:var(--text2)" id="e-title">ลากไฟล์เพลงที่ต้องการ Edit</div>
+        <div class="dz-sub" id="e-sub">MP3 · WAV · FLAC · M4A</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="sec-label">🛠️ เลือก Mode</div>
+      <div class="mode-row">
+        <button class="mode-btn active" onclick="setMode('retake',this)" id="mode-retake">🔄 Retake</button>
+        <button class="mode-btn" onclick="setMode('repaint',this)" id="mode-repaint">✏️ Repaint</button>
+        <button class="mode-btn" onclick="setMode('edit',this)" id="mode-edit">🎛️ Style Edit</button>
+      </div>
+    </div>
+
+    <!-- Retake controls -->
+    <div id="ctrl-retake">
+      <div class="sec-label">🔄 Retake — สร้าง variation ใหม่</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:8px">รักษาโครงสร้างเพลงเดิม แต่สร้าง variation ใหม่ในรายละเอียด</div>
+      <div class="sl-row">
+        <span class="sl-label">Variance</span>
+        <input type="range" min="10" max="90" value="50" id="r-var" oninput="document.getElementById('r-var-v').textContent=(this.value/100).toFixed(2)">
+        <span class="sl-val" id="r-var-v">0.50</span>
+      </div>
+      <div class="guidance-label"><span>เหมือนเดิม</span><span>เปลี่ยนมาก</span></div>
+      <div class="seed-row" style="margin-top:8px">
+        <input class="inp" id="r-seed" type="number" value="-1" placeholder="Seed (-1 = random)">
+        <button class="btn-sm" onclick="document.getElementById('r-seed').value=Math.floor(Math.random()*99999)">🎲</button>
+      </div>
+    </div>
+
+    <!-- Repaint controls -->
+    <div id="ctrl-repaint" style="display:none">
+      <div class="sec-label">✏️ Repaint — แก้ไขเฉพาะช่วงเวลา</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:8px">เลือกช่วงเวลาที่ต้องการแก้ไข เช่น chorus หรือ bridge</div>
+      <div class="sl-row">
+        <span class="sl-label">เริ่มที่</span>
+        <input type="range" min="0" max="240" value="15" id="rp-start" oninput="updateRepaintSliders()">
+        <span class="sl-val" id="rp-start-v">15s</span>
+      </div>
+      <div class="sl-row">
+        <span class="sl-label">ถึง</span>
+        <input type="range" min="0" max="240" value="45" id="rp-end" oninput="updateRepaintSliders()">
+        <span class="sl-val" id="rp-end-v">45s</span>
+      </div>
+      <div class="timeline" id="tl">
+        <div class="tl-bg" id="tl-bg"></div>
+        <div class="tl-selection" id="tl-sel" style="left:6.25%;width:12.5%"></div>
+        <div class="tl-label" id="tl-lbl-s" style="left:6%">15s</div>
+        <div class="tl-label" id="tl-lbl-e" style="left:18%">45s</div>
+      </div>
+    </div>
+
+    <!-- Style Edit controls -->
+    <div id="ctrl-edit" style="display:none">
+      <div class="sec-label">🎛️ Style Edit — เปลี่ยน style/lyrics รักษา melody</div>
+      <div class="mode-row" style="margin-bottom:8px">
+        <button class="mode-btn active" onclick="setEditMode('only_lyrics',this)">📝 Lyrics only</button>
+        <button class="mode-btn" onclick="setEditMode('remix',this)">🔀 Full Remix</button>
+      </div>
+      <div style="font-size:10px;color:var(--text3);margin-bottom:8px" id="edit-mode-desc">เปลี่ยนเนื้อร้องอย่างเดียว รักษา melody เดิมไว้</div>
+    </div>
+
+    <!-- Shared: prompt + lyrics -->
+    <div>
+      <div class="sec-label">🎨 Style Prompt</div>
+      <textarea class="ta" id="e-prompt" rows="2" placeholder="เช่น: thai pop, female vocal, emotional..."></textarea>
+    </div>
+    <div>
+      <div class="sec-label">📝 เนื้อร้องใหม่ (ไม่บังคับ)</div>
+      <textarea class="ta" id="e-lyrics" rows="4" placeholder="[verse]&#10;...&#10;[chorus]&#10;..."></textarea>
+    </div>
+
+    <button class="btn-primary" id="e-btn" onclick="runEditMode()">🎛️ Apply Edit</button>
+    <div class="status-msg" id="e-status"></div>
+  </div>
+
+  <div class="e-right">
+    <div class="idle" id="e-idle">
+      <div class="big">🎛️</div>
+      <h3>Edit & Remix Tools</h3>
+      <p>เลือก mode ทางซ้าย แล้วอัพโหลดเพลงที่ต้องการแก้ไข</p>
+      <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px;text-align:left;width:100%;max-width:320px">
+        <div class="task-card">
+          <div class="task-hdr"><span class="task-icon">🔄</span><div><div class="task-title">Retake</div><div class="task-desc">สร้าง variation ใหม่ รักษาโครงสร้างเดิม</div></div></div>
+        </div>
+        <div class="task-card">
+          <div class="task-hdr"><span class="task-icon">✏️</span><div><div class="task-title">Repaint</div><div class="task-desc">แก้ไขเฉพาะ chorus หรือ bridge ที่ต้องการ</div></div></div>
+        </div>
+        <div class="task-card">
+          <div class="task-hdr"><span class="task-icon">🎛️</span><div><div class="task-title">Style Edit</div><div class="task-desc">เปลี่ยน lyrics/style โดยรักษา melody เดิม</div></div></div>
+        </div>
+      </div>
+    </div>
+    <div id="e-tasks"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     LIBRARY
+═══════════════════════════════════════════ -->
+<div id="page-library" class="page">
+  <div class="lib-inner">
+    <div class="lib-toolbar">
+      <h2>📚 Library</h2>
+      <input class="lib-search" id="lib-search" placeholder="ค้นหา..." oninput="filterLib()">
+      <button class="btn-sm" onclick="loadLibrary()">🔄 Refresh</button>
+      <button class="btn-sm danger" onclick="clearDone()">🗑️ ล้างงานที่เสร็จ</button>
+    </div>
+
+    <table class="lib-table">
+      <thead>
+        <tr>
+          <th>ชื่อ / Task</th>
+          <th>Type</th>
+          <th>สถานะ</th>
+          <th>เวลา</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="lib-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+</div><!-- .pages -->
+
+<script>
+const API = window.location.origin;
+let selVoice = 'male_thai', selPitch = 0;
+let hasFile = false, eHasFile = false;
+let currentJobId = null, pollTimer = null;
+let playTimer = null, playPos = 0, isPlaying = false;
+let editMode = 'retake', editSubMode = 'only_lyrics';
+let libRows = [];
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+function showTab(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── Build voice grid ──────────────────────────────────────────────────────────
+let voiceList = [];
+const ICONS = {male_thai:'👨',female_thai:'👩',luktung:'🪗',morlam:'🥁',pop:'⭐',rock:'🎸'};
+
+async function loadVoices() {
+  try {
+    const r = await fetch(`${API}/api/voices`);
+    voiceList = await r.json();
+  } catch {
+    voiceList = [
+      {id:'male_thai',description:'นักร้องชายไทย',icon:'👨'},
+      {id:'female_thai',description:'นักร้องหญิงไทย',icon:'👩'},
+      {id:'luktung',description:'ลูกทุ่ง',icon:'🪗'},
+      {id:'morlam',description:'หมอลำ',icon:'🥁'},
+      {id:'pop',description:'ป๊อป',icon:'⭐'},
+      {id:'rock',description:'Rock',icon:'🎸'},
+    ];
+  }
+  buildVoiceGrid('voice-grid-studio', v => selVoice = v, selVoice);
+}
+
+function buildVoiceGrid(id, onSel, cur) {
+  const el = document.getElementById(id);
+  el.innerHTML = '';
+  voiceList.forEach(v => {
+    const b = document.createElement('button');
+    b.className = 'vbtn' + (v.id === cur ? ' active' : '');
+    b.innerHTML = `<span>${v.icon||ICONS[v.id]||'🎤'}</span>${v.description||v.name||v.id}`;
+    b.onclick = () => { el.querySelectorAll('.vbtn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); onSel(v.id); };
+    el.appendChild(b);
+  });
+}
+
+// ── Pitch ─────────────────────────────────────────────────────────────────────
+function buildPitch() {
+  const row = document.getElementById('pitch-row');
+  [-2,-1,0,1,2].forEach(v => {
+    const b = document.createElement('button');
+    b.className = 'pbtn' + (v===0?' active':'');
+    b.textContent = v>0?'+'+v:v;
+    b.onclick = () => { document.querySelectorAll('.pbtn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); selPitch=v; };
+    row.appendChild(b);
+  });
+}
+
+// ── Drop zones ────────────────────────────────────────────────────────────────
+const dz=document.getElementById('dz'), fi=document.getElementById('fi');
+fi.onchange = () => fi.files[0] && loadFile(fi.files[0]);
+dz.ondragover = e => { e.preventDefault(); dz.classList.add('drag'); };
+dz.ondragleave = () => dz.classList.remove('drag');
+dz.ondrop = e => { e.preventDefault(); dz.classList.remove('drag'); e.dataTransfer.files[0] && loadFile(e.dataTransfer.files[0]); };
+
+const eDz=document.getElementById('e-dz'), eFi=document.getElementById('e-fi');
+eFi.onchange = () => eFi.files[0] && loadEditFile(eFi.files[0]);
+eDz.ondragover = e => { e.preventDefault(); eDz.classList.add('drag'); };
+eDz.ondragleave = () => eDz.classList.remove('drag');
+eDz.ondrop = e => { e.preventDefault(); eDz.classList.remove('drag'); e.dataTransfer.files[0] && loadEditFile(e.dataTransfer.files[0]); };
+
+function loadFile(f) {
+  hasFile = true; dz.classList.add('ok');
+  document.getElementById('dz-icon').textContent = '✅';
+  document.getElementById('dz-title').textContent = f.name;
+  document.getElementById('dz-sub').textContent = (f.size/1024/1024).toFixed(1)+' MB';
+  setStatus('พร้อม Generate ✓','ok');
+}
+function loadEditFile(f) {
+  eHasFile = true; eDz.classList.add('ok');
+  document.getElementById('e-title').textContent = f.name;
+  document.getElementById('e-sub').textContent = (f.size/1024/1024).toFixed(1)+' MB';
+  setEStatus('พร้อม ✓','ok');
+}
+
+function setStatus(m,c='') { const el=document.getElementById('status-msg'); el.textContent=m; el.className='status-msg'+(c?' '+c:''); }
+function setEStatus(m,c='') { const el=document.getElementById('e-status'); el.textContent=m; el.className='status-msg'+(c?' '+c:''); }
+function setCStatus(m,c='') { const el=document.getElementById('c-status'); el.textContent=m; el.className='status-msg'+(c?' '+c:''); }
+
+// ── Cover (audio2audio via Demucs pipeline) ──────────────────────────────────
+async function generateCover() {
+  if (!hasFile) { setStatus('กรุณาเลือกไฟล์ก่อน','err'); return; }
+  const cv = document.getElementById('custom-voice').value.trim();
+  const voice = cv || selVoice;
+  const fd = new FormData();
+  fd.append('file', fi.files[0]);
+  fd.append('voice_model', voice);
+  fd.append('pitch', selPitch);
+  fd.append('reverb', document.getElementById('reverb-sl').value/100);
+  fd.append('mix_blend', document.getElementById('mix-sl').value/100);
+
+  document.getElementById('gen-btn').disabled = true;
+  showSProg(); setStatus('กำลังส่งไฟล์...');
+  try {
+    const r = await fetch(`${API}/api/cover/create`, {method:'POST',body:fd});
+    if (!r.ok) throw new Error((await r.json()).detail||'Error');
+    const d = await r.json();
+    currentJobId = d.job_id;
+    sLog(`✅ Job: ${currentJobId.slice(0,8)}...`);
+    pollCover();
+  } catch(e) {
+    setStatus(`❌ ${e.message}`,'err');
+    document.getElementById('gen-btn').disabled = false;
+  }
+}
+
+function showSProg() {
+  document.getElementById('s-idle').style.display='none';
+  document.getElementById('s-prog').style.display='block';
+  document.getElementById('s-result').style.display='none';
+  document.getElementById('s-log').innerHTML='';
+  ['st1','st2','st3','st4'].forEach(id=>document.getElementById(id).className='st');
+  setProg(0,'เริ่มต้น...');
+}
+function setProg(p,l) {
+  document.getElementById('prog-fill').style.width=p+'%';
+  document.getElementById('prog-pct').textContent=p+'%';
+  document.getElementById('prog-lbl').textContent=l;
+}
+function sLog(m) {
+  const b=document.getElementById('s-log');
+  const d=document.createElement('div');
+  d.textContent=`[${new Date().toLocaleTimeString('th-TH')}] ${m}`;
+  b.appendChild(d); b.scrollTop=b.scrollHeight;
+}
+const stOrder=['queued','separating','converting','mixing','exporting','done'];
+function pollCover() {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(async()=>{
+    try {
+      const r=await fetch(`${API}/api/cover/status/${currentJobId}`);
+      const job=await r.json();
+      const idx=stOrder.indexOf(job.status);
+      ['st1','st2','st3','st4'].forEach((id,i)=>{
+        const el=document.getElementById(id);
+        if(i<idx-1) el.className='st done';
+        else if(i===idx-1) el.className='st active';
+        else el.className='st';
+      });
+      setProg(job.progress, job.stage_label);
+      setStatus(job.stage_label);
+      if(job.status==='done'){sLog('✅ เสร็จสิ้น!'); showSResult(job); clearInterval(pollTimer); document.getElementById('gen-btn').disabled=false; refreshSideHist();}
+      else if(job.status==='error'){sLog(`❌ ${job.error}`); setStatus(`❌ ${job.error}`,'err'); clearInterval(pollTimer); document.getElementById('gen-btn').disabled=false;}
+      else sLog(`▶ ${job.stage_label} (${job.progress}%)`);
+    } catch(e){sLog(`⚠️ ${e.message}`);}
+  },1200);
+}
+function showSResult(job) {
+  document.getElementById('s-prog').style.display='none';
+  document.getElementById('s-result').style.display='block';
+  ['st1','st2','st3','st4'].forEach(id=>document.getElementById(id).className='st done');
+  if(job.outputs){
+    document.getElementById('dl-mp3').href=job.outputs.cover_mp3||'#';
+    document.getElementById('dl-wav').href=job.outputs.cover_wav||'#';
+    document.getElementById('dl-vocal').href=job.outputs.vocal_wav||'#';
+    document.getElementById('dl-inst').href=job.outputs.instrumental_wav||'#';
+  }
+  buildWaveform(); setStatus('✅ Cover พร้อมแล้ว!','ok');
+}
+
+// ── Waveform player ───────────────────────────────────────────────────────────
+function buildWaveform(){const wf=document.getElementById('waveform');wf.innerHTML='';for(let i=0;i<60;i++){const h=5+Math.random()*22;const b=document.createElement('div');b.className='wb';b.style.height=h+'px';wf.appendChild(b);}}
+function togglePlay(){isPlaying=!isPlaying;document.getElementById('play-btn').textContent=isPlaying?'⏸':'▶';if(isPlaying){playTimer=setInterval(()=>{playPos=Math.min(playPos+1,60);document.querySelectorAll('.wb').forEach((b,i)=>b.classList.toggle('played',i<playPos));const s=Math.round(playPos*3.5);document.getElementById('time-d').textContent=Math.floor(s/60)+':'+(s%60).toString().padStart(2,'0');if(playPos>=60){clearInterval(playTimer);isPlaying=false;playPos=0;document.getElementById('play-btn').textContent='▶';}},140);}else clearInterval(playTimer);}
+function seekWave(e){const wf=document.getElementById('waveform'),r=wf.getBoundingClientRect();playPos=Math.round(((e.clientX-r.left)/r.width)*60);document.querySelectorAll('.wb').forEach((b,i)=>b.classList.toggle('played',i<playPos));}
+
+// ── text2music ────────────────────────────────────────────────────────────────
+async function createSong() {
+  const prompt = document.getElementById('c-prompt').value.trim();
+  if (!prompt) { setCStatus('กรุณาใส่ Style Prompt','err'); return; }
+  const fd = new FormData();
+  fd.append('prompt', prompt);
+  fd.append('lyrics', document.getElementById('c-lyrics').value);
+  fd.append('duration', document.getElementById('c-dur').value);
+  fd.append('infer_step', document.getElementById('c-steps').value);
+  fd.append('guidance_scale', document.getElementById('c-cfg').value);
+  fd.append('seed', document.getElementById('c-seed').value);
+
+  document.getElementById('c-btn').disabled = true;
+  setCStatus('กำลังสร้างเพลง...');
+  try {
+    const r = await fetch(`${API}/api/suno/create`, {method:'POST',body:fd});
+    if (!r.ok) throw new Error((await r.json()).detail||'Error');
+    const d = await r.json();
+    setCStatus(`✅ Task: ${d.task_id.slice(0,8)}...`,'ok');
+    document.getElementById('c-idle').style.display='none';
+    addTaskCard('c-tasks', d.task_id, 'text2music', prompt);
+    pollTask(d.task_id, 'c-tasks');
+  } catch(e) {
+    setCStatus(`❌ ${e.message}`,'err');
+  } finally {
+    document.getElementById('c-btn').disabled = false;
+  }
+}
+
+function fillPrompt(p) {
+  document.getElementById('c-prompt').value = p;
+  document.getElementById('c-idle').querySelector('h3').textContent = 'Prompt พร้อมแล้ว ✓';
+}
+
+// ── Edit modes ────────────────────────────────────────────────────────────────
+function setMode(mode, btn) {
+  editMode = mode;
+  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active');
+  ['ctrl-retake','ctrl-repaint','ctrl-edit'].forEach(id=>document.getElementById(id).style.display='none');
+  document.getElementById('ctrl-'+mode).style.display='block';
+}
+function setEditMode(mode, btn) {
+  editSubMode = mode;
+  document.querySelectorAll('#ctrl-edit .mode-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active');
+  document.getElementById('edit-mode-desc').textContent = mode==='only_lyrics'
+    ? 'เปลี่ยนเนื้อร้องอย่างเดียว รักษา melody เดิมไว้'
+    : 'เปลี่ยนทั้ง style และ melody ตาม prompt ใหม่';
+}
+
+function updateRepaintSliders() {
+  const s=parseInt(document.getElementById('rp-start').value);
+  const e=parseInt(document.getElementById('rp-end').value);
+  document.getElementById('rp-start-v').textContent=s+'s';
+  document.getElementById('rp-end-v').textContent=e+'s';
+  const total=240;
+  const sl=s/total*100, el=e/total*100;
+  document.getElementById('tl-sel').style.left=sl+'%';
+  document.getElementById('tl-sel').style.width=(el-sl)+'%';
+  document.getElementById('tl-lbl-s').style.left=sl+'%';
+  document.getElementById('tl-lbl-s').textContent=s+'s';
+  document.getElementById('tl-lbl-e').style.left=el+'%';
+  document.getElementById('tl-lbl-e').textContent=e+'s';
+}
+
+async function runEditMode() {
+  if (!eHasFile) { setEStatus('กรุณาเลือกไฟล์ก่อน','err'); return; }
+  const prompt = document.getElementById('e-prompt').value.trim();
+  const fd = new FormData();
+  fd.append('file', eFi.files[0]);
+  fd.append('prompt', prompt||'thai pop, professional quality');
+  fd.append('lyrics', document.getElementById('e-lyrics').value);
+
+  let endpoint = '';
+  if (editMode==='retake') {
+    fd.append('variance', document.getElementById('r-var').value/100);
+    fd.append('seed', document.getElementById('r-seed').value);
+    endpoint = '/api/suno/retake';
+  } else if (editMode==='repaint') {
+    fd.append('repaint_start', document.getElementById('rp-start').value);
+    fd.append('repaint_end', document.getElementById('rp-end').value);
+    endpoint = '/api/suno/repaint';
+  } else {
+    fd.append('new_prompt', prompt||'thai pop, professional quality');
+    fd.append('new_lyrics', document.getElementById('e-lyrics').value);
+    fd.append('mode', editSubMode);
+    endpoint = '/api/suno/edit';
+  }
+
+  document.getElementById('e-btn').disabled = true;
+  setEStatus('กำลังส่ง...');
+  try {
+    const r = await fetch(`${API}${endpoint}`, {method:'POST',body:fd});
+    if (!r.ok) throw new Error((await r.json()).detail||'Error');
+    const d = await r.json();
+    setEStatus(`✅ Task: ${d.task_id.slice(0,8)}...`,'ok');
+    document.getElementById('e-idle').style.display='none';
+    addTaskCard('e-tasks', d.task_id, editMode, prompt||editMode);
+    pollTask(d.task_id, 'e-tasks');
+  } catch(e) {
+    setEStatus(`❌ ${e.message}`,'err');
+  } finally {
+    document.getElementById('e-btn').disabled = false;
+  }
+}
+
+// ── Build timeline bars ───────────────────────────────────────────────────────
+function buildTimeline() {
+  const bg = document.getElementById('tl-bg');
+  bg.innerHTML = '';
+  for (let i=0;i<48;i++) {
+    const h=8+Math.random()*20;
+    const b=document.createElement('div');
+    b.className='tl-bar'; b.style.height=h+'px'; bg.appendChild(b);
+  }
+  updateRepaintSliders();
+}
+
+// ── Task cards ────────────────────────────────────────────────────────────────
+function addTaskCard(containerId, taskId, type, label) {
+  const box = document.getElementById(containerId);
+  const card = document.createElement('div');
+  card.className='task-card';
+  card.id=`task-${taskId}`;
+  const typeIcon = {text2music:'✨',audio2audio:'🎤',retake:'🔄',repaint:'✏️',edit:'🎛️'}[type]||'🎵';
+  card.innerHTML=`
+    <div class="task-hdr">
+      <span class="task-icon">${typeIcon}</span>
+      <div>
+        <div class="task-title">${label.slice(0,40)}${label.length>40?'...':''}</div>
+        <div class="task-desc" id="tl-${taskId}">กำลังประมวลผล...</div>
+      </div>
+      <span class="badge chip-run" id="tb-${taskId}" style="margin-left:auto">⏳</span>
+    </div>
+    <div class="task-mini-prog"><div class="task-mini-fill" id="tf-${taskId}" style="width:5%"></div></div>
+    <div id="ta-${taskId}"></div>
+  `;
+  box.insertBefore(card, box.firstChild);
+}
+
+function pollTask(taskId, containerId) {
+  const timer = setInterval(async()=>{
+    try {
+      const r=await fetch(`${API}/api/suno/tasks/${taskId}`);
+      const t=await r.json();
+      const lbl=document.getElementById(`tl-${taskId}`);
+      const badge=document.getElementById(`tb-${taskId}`);
+      const fill=document.getElementById(`tf-${taskId}`);
+      const actions=document.getElementById(`ta-${taskId}`);
+      if(lbl) lbl.textContent=t.label||t.status;
+      if(fill) fill.style.width=(t.progress||5)+'%';
+      if(t.status==='done'){
+        if(badge){badge.textContent='✓';badge.className='badge badge-done';}
+        if(fill) fill.style.width='100%';
+        if(actions) actions.innerHTML=`<a class="dl-btn" href="/api/suno/tasks/${taskId}/download" download style="margin-top:8px">⬇ Download Result</a>`;
+        clearInterval(timer);
+        refreshSideHist();
+      } else if(t.status==='error'){
+        if(badge){badge.textContent='✗';badge.className='badge badge-err';}
+        if(lbl) lbl.textContent=`❌ ${t.error||'Error'}`;
+        clearInterval(timer);
+      }
+    } catch(e){ clearInterval(timer); }
+  },1500);
+}
+
+// ── Side history ──────────────────────────────────────────────────────────────
+async function refreshSideHist() {
+  try {
+    const r=await fetch(`${API}/api/jobs?limit=6`);
+    const jobs=await r.json();
+    const box=document.getElementById('side-hist');
+    if(!jobs.length){box.innerHTML='<div style="font-size:11px;color:var(--text3);text-align:center;padding:10px">ยังไม่มีงาน</div>';return;}
+    box.innerHTML=jobs.map(j=>{
+      const c=j.status==='done'?'var(--green)':j.status==='error'?'var(--red)':'var(--accent)';
+      const lbl=j.status==='done'?'✓':j.status==='error'?'✗':j.progress+'%';
+      return `<div class="hist-item">
+        <div class="hi-dot" style="background:${c}"></div>
+        <div class="hi-info"><div class="hi-name">${j.filename||j.id.slice(0,14)}</div><div class="hi-sub">${j.voice_model||j.mode||'–'}</div></div>
+        <span style="font-size:10px;color:var(--text3)">${lbl}</span>
+      </div>`;
+    }).join('');
+  } catch{}
+}
+
+// ── Library ───────────────────────────────────────────────────────────────────
+async function loadLibrary() {
+  try {
+    const [r1,r2]=await Promise.all([
+      fetch(`${API}/api/jobs?limit=100`).then(r=>r.json()),
+      fetch(`${API}/api/suno/tasks?limit=100`).then(r=>r.json()),
+    ]);
+    libRows=[
+      ...r1.map(j=>({...j,_type:'cover'})),
+      ...r2.map(t=>({...t,id:t.id,filename:t.prompt?.slice(0,30),voice_model:t.task_type,created_at:t.created_at,_type:'suno'})),
+    ].sort((a,b)=>b.created_at.localeCompare(a.created_at));
+    renderLib(libRows);
+  } catch(e){document.getElementById('lib-tbody').innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--text3)">โหลดไม่ได้: ${e.message}</td></tr>`;}
+}
+
+function renderLib(rows) {
+  const tbody=document.getElementById('lib-tbody');
+  if(!rows.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px">ยังไม่มีงาน</td></tr>';return;}
+  const typeChip={cover:'chip-a2a',text2music:'chip-t2m',audio2audio:'chip-a2a',retake:'chip-edit',repaint:'chip-edit',edit:'chip-edit'};
+  const typeLabel={cover:'Cover',text2music:'Create',audio2audio:'Style Cover',retake:'Retake',repaint:'Repaint',edit:'Edit'};
+  tbody.innerHTML=rows.map(j=>{
+    const st=j.status==='done'?'chip-done':j.status==='error'?'chip-err':j.status==='queued'?'chip-q':'chip-run';
+    const stLbl={done:'✓ Done',error:'✗ Error',queued:'⏳ Queued',running:'⚙ Running',separating:'⚙',converting:'⚙',mixing:'⚙',exporting:'⚙'}[j.status]||j.status;
+    const t=new Date(j.created_at).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'});
+    const typ=j._type==='cover'?'cover':j.task_type||'–';
+    const dl=j.status==='done'?(j._type==='cover'&&j.outputs?.cover_mp3
+      ?`<a class="act-btn" href="${j.outputs.cover_mp3}" download>⬇ MP3</a>`
+      :j._type==='suno'?`<a class="act-btn" href="/api/suno/tasks/${j.id}/download" download>⬇</a>`
+      :''):'';
+    return `<tr>
+      <td style="color:var(--text);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${j.filename||j.prompt?.slice(0,30)||j.id.slice(0,12)}</td>
+      <td><span class="chip ${typeChip[typ]||'chip-q'}">${typeLabel[typ]||typ}</span></td>
+      <td><span class="chip ${st}">${stLbl}</span></td>
+      <td style="white-space:nowrap">${t}</td>
+      <td style="white-space:nowrap">${dl}<button class="act-btn del" onclick="deleteItem('${j.id}','${j._type}')">🗑️</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function filterLib(){const q=document.getElementById('lib-search').value.toLowerCase();renderLib(libRows.filter(j=>(j.filename||j.prompt||j.id).toLowerCase().includes(q)));}
+
+async function deleteItem(id, type) {
+  const ep=type==='cover'?`/api/jobs/${id}`:`/api/suno/tasks/${id}`;
+  await fetch(`${API}${ep}`,{method:'DELETE'});
+  loadLibrary(); refreshSideHist();
+}
+async function clearDone(){if(!confirm('ลบงานที่เสร็จแล้วทั้งหมด?'))return;await fetch(`${API}/api/jobs`,{method:'DELETE'});loadLibrary();refreshSideHist();}
+
+// ── System status ─────────────────────────────────────────────────────────────
+async function checkSystem() {
+  try {
+    const [h,q,ace]=await Promise.all([
+      fetch(`${API}/health`).then(r=>r.json()),
+      fetch(`${API}/api/queue`).then(r=>r.json()),
+      fetch(`${API}/api/ace-step/status`).then(r=>r.json()),
+    ]);
+    document.getElementById('be-api').textContent='online';
+    document.getElementById('be-api').className='be-v';
+    const total=q.queued+q.active;
+    document.getElementById('be-q').textContent=`${q.queued} รอ / ${q.active} ทำงาน`;
+    document.getElementById('queue-pill').textContent=`Queue: ${total}`;
+
+    const dot=document.getElementById('ace-dot'),lbl=document.getElementById('ace-lbl'),beAce=document.getElementById('be-ace');
+    if(ace.online){dot.className='dot on';lbl.textContent='ACE-Step online';beAce.textContent='online';beAce.className='be-v';}
+    else{dot.className='dot off';lbl.textContent='ACE-Step offline';beAce.textContent='offline';beAce.className='be-v off';}
+  } catch{document.getElementById('be-api').textContent='offline';document.getElementById('be-api').className='be-v off';}
+}
+
+// Init
+buildPitch();
+buildTimeline();
+loadVoices();
+refreshSideHist();
+checkSystem();
+setInterval(checkSystem,8000);
+setInterval(refreshSideHist,10000);
+</script>
+</body>
+</html>
